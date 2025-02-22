@@ -1,9 +1,7 @@
-// middlewares/authMiddleware.js
 const { verifyToken } = require("@clerk/clerk-sdk-node");
 
 const authMiddleware = async (req, res, next) => {
   try {
-    // Expecting "Bearer <token>" in the Authorization header
     const authHeader = req.headers.authorization;
     if (!authHeader) {
       return res.status(401).json({ error: "Missing authorization header" });
