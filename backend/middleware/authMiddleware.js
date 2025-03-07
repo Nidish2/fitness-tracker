@@ -1,18 +1,30 @@
-const { verifyToken } = require("@clerk/clerk-sdk-node");
+const { ClerkExpressWithAuth } = require("@clerk/clerk-sdk-node");
 
-const authMiddleware = async (req, res, next) => {
+const authMiddleware = ClerkExpressWithAuth({
+  // This properly sets up Clerk authentication verification
+  // and adds the auth object to the request
+  authorizedParties: [
+    process.env.CLERK_ALLOWED_ORIGIN || "http://localhost:3000",
+  ],
+});
+
+// Our custom middleware that uses Clerk's auth object
+const validateUser = (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: "Missing authorization header" });
+    if (!req.auth?.userId) {
+      return res.status(401).json({ error: "Unauthorized access" });
     }
-    const token = authHeader.split(" ")[1];
-    const decoded = await verifyToken(token);
-    req.user = decoded;
+
+    // Set the clerkId on the request object for controllers to use
+    req.user = { id: req.auth.userId };
     next();
-  } catch (err) {
-    res.status(401).json({ error: "Unauthorized" });
+  } catch (error) {
+    console.error("Auth validation error:", error);
+    res.status(401).json({ error: "Authentication failed" });
   }
 };
 
-module.exports = authMiddleware;
+// Combined middleware for protected routes
+const protectRoute = [authMiddleware, validateUser];
+
+module.exports = protectRoute;

@@ -1,27 +1,16 @@
-import React, { useEffect } from "react";
-import { useAuth } from "@clerk/clerk-react";
+import React from "react";
+import { useUser } from "@clerk/clerk-react";
+import PersonalDetails from "../components/Dashboard/PersonalDetails";
 
-function Dashboard() {
-  const { getToken } = useAuth();
-
-  useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        const token = await getToken();
-        console.log("Clerk Session Token:", token);
-      } catch (err) {
-        console.error("Error fetching token:", err);
-      }
-    };
-    fetchToken();
-  }, [getToken]);
+const Dashboard = () => {
+  const { user } = useUser();
 
   return (
     <div>
-      <h2>Dashboard</h2>
-      <p>Welcome to your dashboard! Check the console for your token.</p>
+      <h1>Welcome, {user?.firstName || "User"}</h1>
+      <PersonalDetails />
     </div>
   );
-}
+};
 
 export default Dashboard;

@@ -1,11 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const userController = require("../controllers/userController");
-const authMiddleware = require("../middleware/authMiddleware");
+const {
+  saveUserDetails,
+  getUserDetails,
+} = require("../controllers/userController");
+const protectRoute = require("../middleware/authMiddleware");
 
-// POST: Save user details
-router.post("/details", authMiddleware, userController.saveUserDetails);
-// GET: Fetch user details
-router.get("/details", authMiddleware, userController.getUserDetails);
+// Use the combined middleware array
+router.post("/details", protectRoute, saveUserDetails);
+router.get("/details", protectRoute, getUserDetails);
 
 module.exports = router;
