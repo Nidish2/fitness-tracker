@@ -1,90 +1,104 @@
+// backend/models/User.js
 const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema(
+const UserSchema = new mongoose.Schema(
   {
-    clerkId: {
+    userId: {
       type: String,
-      required: true,
-      unique: true,
-      index: true,
+      required: [true, "User ID is required"],
+      index: true, // Add index for faster queries
+      unique: true, // Ensure unique userId
     },
     name: {
       type: String,
-      required: true,
+      required: [true, "Name is required"],
       trim: true,
     },
     age: {
       type: Number,
-      required: true,
-      min: 1,
-      max: 120,
+      min: [1, "Age must be at least 1"],
+      max: [120, "Age cannot exceed 120"],
+      required: [true, "Age is required"],
     },
     height: {
       type: Number,
-      required: true,
-      min: 1,
-      max: 300, // cm
-      comment: "Height in centimeters",
+      min: [1, "Height must be at least 1 cm"],
+      max: [300, "Height cannot exceed 300 cm"],
+      required: [true, "Height is required"],
     },
     weight: {
       type: Number,
-      required: true,
-      min: 1,
-      max: 500, // kg
-      comment: "Weight in kilograms",
+      min: [1, "Weight must be at least 1 kg"],
+      max: [500, "Weight cannot exceed 500 kg"],
+      required: [true, "Weight is required"],
     },
-    // Additional fitness-related fields (optional)
     activityLevel: {
       type: String,
-      enum: ["sedentary", "light", "moderate", "active", "very_active"],
+      enum: ["sedentary", "light", "moderate", "active", "very active"],
       default: "moderate",
     },
-    weightHistory: [
-      {
-        weight: {
-          type: Number,
-          required: true,
-        },
-        date: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
     fitnessGoals: {
       type: [String],
-      default: [],
+      enum: ["weight loss", "muscle gain", "maintenance", "endurance"],
     },
     healthConditions: {
       type: [String],
-      default: [],
+    },
+    lastMenstrualPeriod: {
+      type: Date,
+      required: function () {
+        return this.gender === "female";
+      },
+    },
+    averageCycleLength: {
+      type: Number,
+      min: [21, "Cycle length must be at least 21 days"],
+      max: [35, "Cycle length cannot exceed 35 days"],
+      required: function () {
+        return this.gender === "female";
+      },
+    },
+    weightHistory: [
+      {
+        weight: { type: Number, required: true },
+        date: { type: Date, default: Date.now },
+      },
+    ],
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-// Virtual for BMI calculation
-userSchema.virtual("bmi").get(function () {
+// Middleware to update the updatedAt field
+UserSchema.pre("save", function (next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+// Add virtual field for BMI calculation
+UserSchema.virtual("bmi").get(function () {
+  if (!this.height || !this.weight) return null;
   const heightInMeters = this.height / 100;
   return (this.weight / (heightInMeters * heightInMeters)).toFixed(1);
 });
 
-// Method to add weight history entry
-userSchema.methods.addWeightRecord = function (weight) {
-  this.weightHistory.push({ weight, date: new Date() });
-
-  // Keep only the latest 100 entries
-  if (this.weightHistory.length > 100) {
-    this.weightHistory = this.weightHistory.slice(-100);
-  }
-
-  return this.save();
+// Add method to check if user data needs to be updated
+UserSchema.methods.needsUpdate = function (newData) {
+  return (
+    this.name !== newData.name ||
+    this.age !== newData.age ||
+    this.height !== newData.height ||
+    this.weight !== newData.weight
+  );
 };
 
-// Make the virtuals available when converting to JSON
-userSchema.set("toJSON", { virtuals: true });
-userSchema.set("toObject", { virtuals: true });
+const User = mongoose.model("User", UserSchema);
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = User;

@@ -11,7 +11,7 @@ exports.saveUserDetails = async (req, res) => {
       fitnessGoals,
       healthConditions,
     } = req.body;
-    const clerkId = req.user.id; // Set by authMiddleware from Clerk
+    const userId = req.user.id; // Clerk user ID from auth middleware
 
     // Validate required fields
     if (!name || !age || !height || !weight) {
@@ -25,26 +25,23 @@ exports.saveUserDetails = async (req, res) => {
     if (typeof name !== "string" || name.trim() === "") {
       return res.status(400).json({ error: "Invalid name" });
     }
-
     if (isNaN(age) || age <= 0 || age > 120) {
       return res
         .status(400)
         .json({ error: "Invalid age (must be between 1-120)" });
     }
-
     if (isNaN(height) || height <= 0 || height > 300) {
       return res
         .status(400)
         .json({ error: "Invalid height (must be between 1-300 cm)" });
     }
-
     if (isNaN(weight) || weight <= 0 || weight > 500) {
       return res
         .status(400)
         .json({ error: "Invalid weight (must be between 1-500 kg)" });
     }
 
-    let user = await User.findOne({ clerkId });
+    let user = await User.findOne({ userId });
 
     if (user) {
       // Track weight history if weight changed
@@ -54,29 +51,24 @@ exports.saveUserDetails = async (req, res) => {
           date: new Date(),
         });
       }
-
       // Update existing user
       user.name = name;
       user.age = age;
       user.height = height;
       user.weight = weight;
-
-      // Update optional fields if provided
       if (activityLevel) user.activityLevel = activityLevel;
       if (fitnessGoals) user.fitnessGoals = fitnessGoals;
       if (healthConditions) user.healthConditions = healthConditions;
     } else {
       // Create new user
       user = new User({
-        clerkId,
+        userId, // Use userId instead of clerkId
         name,
         age,
         height,
         weight,
         weightHistory: [{ weight, date: new Date() }],
       });
-
-      // Set optional fields if provided
       if (activityLevel) user.activityLevel = activityLevel;
       if (fitnessGoals) user.fitnessGoals = fitnessGoals;
       if (healthConditions) user.healthConditions = healthConditions;
@@ -104,8 +96,8 @@ exports.saveUserDetails = async (req, res) => {
 
 exports.getUserDetails = async (req, res) => {
   try {
-    const clerkId = req.user.id;
-    const user = await User.findOne({ clerkId });
+    const userId = req.user.id;
+    const user = await User.findOne({ userId });
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
