@@ -1,13 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const {
-  saveUserDetails,
-  getUserDetails,
-} = require("../controllers/userController");
-const protectRoute = require("../middleware/authMiddleware");
+const authMiddleware = require("../middleware/authMiddleware"); // Assumes Clerk auth middleware exists
+const userController = require("../controllers/userController");
 
-// Use the combined middleware array
-router.post("/details", protectRoute, saveUserDetails);
-router.get("/details", protectRoute, getUserDetails);
+router.get("/details", authMiddleware, userController.getUserDetails);
+router.post("/details", authMiddleware, userController.updateUserDetails);
 
 module.exports = router;

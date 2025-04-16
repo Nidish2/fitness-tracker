@@ -1,165 +1,144 @@
 const User = require("../models/User");
 
-exports.saveUserDetails = async (req, res) => {
+exports.getUserDetails = async (req, res) => {
   try {
-    const {
+    // Enhanced logging for debugging
+    console.log("getUserDetails called with clerkId:", req.user.id);
+    console.log("Request headers:", req.headers);
+
+    // Find user by the Clerk ID
+    let user = await User.findOne({ clerkId: req.user.id });
+
+    if (!user) {
+      console.log(
+        "User not found in database, creating new user for clerkId:",
+        req.user.id
+      );
+
+      // Create a new user if not found
+      user = new User({
+        clerkId: req.user.id,
+        name: req.user.name || null,
+      });
+
+      try {
+        await user.save();
+        console.log("New user created with ID:", user._id);
+      } catch (saveError) {
+        console.error("Error saving new user:", saveError);
+        return res.status(500).json({
+          message: "Error creating new user",
+          error: saveError.message,
+          success: false,
+        });
+      }
+
+      return res.json(user);
+    }
+
+    console.log("User found:", user._id);
+    res.json(user);
+  } catch (error) {
+    console.error("Error in getUserDetails:", error);
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+      success: false,
+    });
+  }
+};
+
+exports.updateUserDetails = async (req, res) => {
+  try {
+    const { name, age, height, weight } = req.body;
+    const clerkId = req.user.id;
+
+    console.log("updateUserDetails called with:", {
       name,
       age,
       height,
       weight,
-      activityLevel,
-      fitnessGoals,
-      healthConditions,
-    } = req.body;
-    const userId = req.user.id; // Clerk user ID from auth middleware
+      clerkId,
+    });
 
-    // Validate required fields
+    // Validate inputs
     if (!name || !age || !height || !weight) {
       return res.status(400).json({
-        error: "Missing required fields",
-        details: "Name, age, height, and weight are required",
+        message: "All fields are required",
+        success: false,
       });
     }
 
-    // Validate data types and ranges
-    if (typeof name !== "string" || name.trim() === "") {
-      return res.status(400).json({ error: "Invalid name" });
-    }
-    if (isNaN(age) || age <= 0 || age > 120) {
-      return res
-        .status(400)
-        .json({ error: "Invalid age (must be between 1-120)" });
-    }
-    if (isNaN(height) || height <= 0 || height > 300) {
-      return res
-        .status(400)
-        .json({ error: "Invalid height (must be between 1-300 cm)" });
-    }
-    if (isNaN(weight) || weight <= 0 || weight > 500) {
-      return res
-        .status(400)
-        .json({ error: "Invalid weight (must be between 1-500 kg)" });
+    if (isNaN(age) || isNaN(height) || isNaN(weight)) {
+      return res.status(400).json({
+        message: "Age, height, and weight must be valid numbers",
+        success: false,
+      });
     }
 
-    let user = await User.findOne({ userId });
+    // Find user by Clerk ID
+    let user = await User.findOne({ clerkId: clerkId });
 
-    if (user) {
-      // Track weight history if weight changed
-      if (user.weight !== weight) {
-        user.weightHistory.push({
-          weight,
-          date: new Date(),
-        });
-      }
-      // Update existing user
-      user.name = name;
-      user.age = age;
-      user.height = height;
-      user.weight = weight;
-      if (activityLevel) user.activityLevel = activityLevel;
-      if (fitnessGoals) user.fitnessGoals = fitnessGoals;
-      if (healthConditions) user.healthConditions = healthConditions;
-    } else {
-      // Create new user
+    if (!user) {
+      console.log(
+        "User not found in updateUserDetails, creating new user with clerkId:",
+        clerkId
+      );
+
+      // Create new user if not exists
       user = new User({
-        userId, // Use userId instead of clerkId
+        clerkId: clerkId,
         name,
         age,
         height,
         weight,
-        weightHistory: [{ weight, date: new Date() }],
       });
-      if (activityLevel) user.activityLevel = activityLevel;
-      if (fitnessGoals) user.fitnessGoals = fitnessGoals;
-      if (healthConditions) user.healthConditions = healthConditions;
+
+      // Add initial weight record
+      try {
+        await user.addWeightRecord(weight);
+      } catch (weightError) {
+        console.error("Error adding weight record:", weightError);
+      }
+    } else {
+      console.log("Updating existing user:", user._id);
+
+      // Update existing user
+      user.name = name;
+      user.age = age;
+      user.height = height;
+
+      // This will update weight and add to history if changed
+      try {
+        await user.addWeightRecord(weight);
+      } catch (weightError) {
+        console.error("Error updating weight record:", weightError);
+      }
     }
 
-    await user.save();
+    try {
+      await user.save();
+      console.log("User saved successfully:", user._id);
+    } catch (saveError) {
+      console.error("Error saving user:", saveError);
+      return res.status(500).json({
+        message: "Error saving user details",
+        error: saveError.message,
+        success: false,
+      });
+    }
 
-    res.status(200).json({
-      message: "User details saved successfully",
-      user: {
-        name: user.name,
-        age: user.age,
-        height: user.height,
-        weight: user.weight,
-        bmi: user.bmi,
-      },
+    res.json({
+      user,
+      success: true,
+      message: "User details updated successfully",
     });
   } catch (error) {
-    console.error("saveUserDetails error:", error);
-    res
-      .status(500)
-      .json({ error: "Failed to save user details", message: error.message });
-  }
-};
-
-exports.getUserDetails = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const user = await User.findOne({ userId });
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    res.status(200).json(user);
-  } catch (error) {
-    console.error("getUserDetails error:", error);
-    res
-      .status(500)
-      .json({ error: "Failed to fetch user details", message: error.message });
-  }
-};
-
-// New endpoint to add a weight history record
-exports.addWeightRecord = async (req, res) => {
-  try {
-    const { weight } = req.body;
-    const clerkId = req.user.id;
-
-    if (!weight || isNaN(weight) || weight <= 0 || weight > 500) {
-      return res
-        .status(400)
-        .json({ error: "Invalid weight (must be between 1-500 kg)" });
-    }
-
-    const user = await User.findOne({ clerkId });
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    await user.addWeightRecord(weight);
-
-    res.status(200).json({
-      message: "Weight record added successfully",
-      weightHistory: user.weightHistory,
-    });
-  } catch (error) {
-    console.error("addWeightRecord error:", error);
-    res
-      .status(500)
-      .json({ error: "Failed to add weight record", message: error.message });
-  }
-};
-
-// New endpoint to get user's weight history
-exports.getWeightHistory = async (req, res) => {
-  try {
-    const clerkId = req.user.id;
-    const user = await User.findOne({ clerkId });
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    res.status(200).json({ weightHistory: user.weightHistory });
-  } catch (error) {
-    console.error("getWeightHistory error:", error);
+    console.error("Error in updateUserDetails:", error);
     res.status(500).json({
-      error: "Failed to fetch weight history",
-      message: error.message,
+      message: "Server error",
+      error: error.message,
+      success: false,
     });
   }
 };
