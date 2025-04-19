@@ -1,8 +1,10 @@
+// Modified Dashboard.tsx - Updated fetchUserDetails to handle first-time users better
 import { useUser } from "@clerk/clerk-react";
 import { useState, useEffect } from "react";
 import PersonalDetailsForm from "../components/Dashboard/PersonalDetails";
 import { getUserDetails, updateUserDetails } from "../services/userService";
 import { getClerkToken } from "../services/authService";
+import ApiDiagnostic from "../components/ApiDiagnostic";
 
 interface UserDetails {
   name?: string;
@@ -32,6 +34,7 @@ const Dashboard = () => {
     isError: false,
   });
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   // Enhanced error handling function
   const handleApiError = (err: unknown, context: string) => {
@@ -43,55 +46,6 @@ const Dashboard = () => {
       isError: true,
       details: context,
     });
-  };
-
-  // Verify connection function
-  const verifyConnection = async () => {
-    setLoading(true);
-    setApiStatus({
-      message: "Verifying connection...",
-      isError: false,
-    });
-
-    try {
-      // First try the protected route
-      const response = await fetch("http://localhost:5000/api/auth/protected", {
-        headers: {
-          Authorization: `Bearer ${await getClerkToken()}`,
-        },
-      });
-
-      if (!response.ok) {
-        // Try to get detailed error message
-        let errorMsg;
-        try {
-          const errorData = await response.json();
-          errorMsg = errorData.message || response.statusText;
-        } catch {
-          errorMsg = response.statusText;
-        }
-
-        throw new Error(errorMsg || "API connection failed");
-      }
-
-      const data = await response.json();
-      console.log("Protected route response:", data);
-
-      setApiStatus({
-        message: "Connection verified successfully!",
-        isError: false,
-      });
-    } catch (err) {
-      console.log("this is an error");
-      setApiStatus({
-        message: `Connection error: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
-        isError: true,
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   const fetchUserDetails = async (showLoading = true) => {
@@ -110,10 +64,17 @@ const Dashboard = () => {
       const data = await getUserDetails();
       console.log("API Response:", data);
 
-      setUserDetails(data);
+      // Important: Check if the returned data is valid
+      if (data) {
+        setUserDetails(data);
 
-      if (!data.name) {
-        setIsEditing(true);
+        // If user doesn't have basic info set and this is first load, open edit form
+        if (!data.name && isFirstLoad) {
+          setIsEditing(true);
+          setIsFirstLoad(false);
+        }
+      } else {
+        throw new Error("Received empty response from API");
       }
 
       setError("");
@@ -123,12 +84,24 @@ const Dashboard = () => {
       });
     } catch (err) {
       handleApiError(err, "load user details");
-      setUserDetails({}); // Initialize with empty object to avoid null errors
+      // Initialize with empty object to avoid null errors, but don't clear existing data on refresh
+      if (!userDetails) {
+        setUserDetails({
+          clerkId: user.id,
+        });
+
+        // If this is the first load attempt, automatically open the edit form
+        if (isFirstLoad) {
+          setIsEditing(true);
+          setIsFirstLoad(false);
+        }
+      }
     } finally {
       if (showLoading) setLoading(false);
     }
   };
 
+  // Initial data fetch when component mounts
   useEffect(() => {
     if (isLoaded && user) {
       fetchUserDetails();
@@ -177,26 +150,34 @@ const Dashboard = () => {
       console.log("Sending to API:", details);
 
       const response = await updateUserDetails(details);
-      setUserDetails(response.user);
-      setIsEditing(false);
-      setSuccessMessage("Profile updated successfully!");
 
-      setApiStatus({
-        message: "Update API call successful!",
-        isError: false,
-      });
+      if (response && response.user) {
+        setUserDetails(response.user);
+        setIsEditing(false);
+        setSuccessMessage("Profile updated successfully!");
 
-      console.log("API Response:", response);
+        setApiStatus({
+          message: "Update API call successful!",
+          isError: false,
+        });
 
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
+        console.log("API Response:", response);
+
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 3000);
+      } else {
+        throw new Error("Invalid response from update API");
+      }
     } catch (err) {
       handleApiError(err, "update user details");
     } finally {
       setLoading(false);
     }
   };
+
+  // Rest of the Dashboard component remains the same
+  // ...
 
   // Debug info component
   const DebugInfo = () => (
@@ -208,14 +189,9 @@ const Dashboard = () => {
         <p>API Status: {apiStatus.message}</p>
         {apiStatus.details && <p>Context: {apiStatus.details}</p>}
       </div>
-      <div className="mt-4">
-        <button
-          onClick={verifyConnection}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-        >
-          Verify API Connection
-        </button>
-      </div>
+
+      {/* Add the API Diagnostic component here */}
+      <ApiDiagnostic />
     </div>
   );
 

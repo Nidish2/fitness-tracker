@@ -17,7 +17,12 @@ const handleApiResponse = async (response: Response) => {
     }
     throw new Error(errorMessage);
   }
-  return await response.json();
+
+  const data = await response.json();
+  if (!data) {
+    throw new Error("Empty response from API");
+  }
+  return data;
 };
 
 export const getUserDetails = async () => {
@@ -35,10 +40,14 @@ export const getUserDetails = async () => {
     );
 
     const response = await fetch(`${API_BASE_URL}/user/details`, {
+      method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
         "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
       },
+      credentials: "include", // Include credentials in the request
     });
 
     console.log("API response status:", response.status);
@@ -63,24 +72,39 @@ export const updateUserDetails = async (details: {
       throw new Error("Authentication token is missing");
     }
 
+    // Ensure numeric values are properly formatted
+    const formattedDetails = {
+      name: details.name,
+      age: Number(details.age),
+      height: Number(details.height),
+      weight: Number(details.weight),
+    };
+
     const response = await fetch(`${API_BASE_URL}/user/details`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
+        "Cache-Control": "no-cache, no-store, must-revalidate",
       },
-      body: JSON.stringify(details),
+      body: JSON.stringify(formattedDetails),
+      credentials: "include", // Include credentials in the request
     });
 
     console.log("API response status:", response.status);
-    return await handleApiResponse(response);
+    const data = await handleApiResponse(response);
+
+    // Log the response for debugging
+    console.log("Update response data:", data);
+
+    return data;
   } catch (error) {
     console.error("Error updating user details:", error);
     throw error;
   }
 };
 
-// Add a verification function
+// API connection verification function
 export const verifyApiConnection = async () => {
   try {
     console.log("Verifying API connection...");
@@ -91,9 +115,12 @@ export const verifyApiConnection = async () => {
     }
 
     const response = await fetch(`${API_BASE_URL}/auth/protected`, {
+      method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
+        "Cache-Control": "no-cache, no-store, must-revalidate",
       },
+      credentials: "include", // Include credentials in the request
     });
 
     console.log("Verification response status:", response.status);

@@ -1,50 +1,35 @@
-// routes/authRoutes.js
 const express = require("express");
 const router = express.Router();
-const authMiddleware = require("../middleware/authMiddleware");
+const { ClerkExpressWithAuth } = require("@clerk/clerk-sdk-node");
 const User = require("../models/User");
 
-// Protected route that automatically creates a user if not exists
-router.get("/protected", authMiddleware, async (req, res) => {
+router.get("/protected", ClerkExpressWithAuth(), async (req, res) => {
   try {
-    console.log("Protected route accessed with clerkId:", req.user.id);
+    if (!req.auth || !req.auth.userId) {
+      return res.status(401).json({ message: "Unauthorized", success: false });
+    }
+    const clerkId = req.auth.userId;
+    console.log("Protected route accessed with clerkId:", clerkId);
 
-    // Check if user exists
-    let user = await User.findOne({ clerkId: req.user.id });
-
+    let user = await User.findOne({ clerkId });
     if (!user) {
-      console.log(
-        "User not found, creating new user with clerkId:",
-        req.user.id
-      );
-      // Create user in MongoDB if not exists
-      const newUser = new User({
-        clerkId: req.user.id,
-        name: req.user.name || null,
-        // Add any other fields you want to initialize
+      console.log("User not found, creating new user with clerkId:", clerkId);
+      user = new User({
+        clerkId,
+        name: req.auth.user?.firstName || null,
       });
-
-      user = await newUser.save();
+      await user.save();
       console.log("New user created:", user._id);
-
       return res.json({
         message: "New user created successfully",
-        user: {
-          id: user._id,
-          clerkId: user.clerkId,
-          name: user.name,
-        },
+        user: { id: user._id, clerkId: user.clerkId, name: user.name },
       });
     }
 
     console.log("Existing user found:", user._id);
     res.json({
       message: "Protected route accessed successfully",
-      user: {
-        id: user._id,
-        clerkId: user.clerkId,
-        name: user.name,
-      },
+      user: { id: user._id, clerkId: user.clerkId, name: user.name },
     });
   } catch (error) {
     console.error("Error in protected route:", error);
