@@ -19,6 +19,28 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    // Additional fields for Phase 3
+    age: {
+      type: Number,
+    },
+    height: {
+      type: Number, // in cm
+    },
+    weight: {
+      type: Number, // in kg
+    },
+    gender: {
+      type: String,
+      enum: ["male", "female", "other", "prefer-not-to-say"],
+    },
+    fitnessLevel: {
+      type: String,
+      enum: ["beginner", "intermediate", "advanced"],
+    },
+    selectedPlanId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Plan",
+    },
     isProfileComplete: {
       type: Boolean,
       default: false,

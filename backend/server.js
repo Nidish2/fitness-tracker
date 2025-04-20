@@ -3,9 +3,12 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+
+// Fix the import - make sure to use the correct path and casing
 const authRoutes = require("./routes/auth");
 const usersRoutes = require("./routes/users");
-// const plansRoutes = require("./routes/plans");
+const plansRoutes = require("./routes/plans");
+const exercisesRoutes = require("./routes/exercises");
 
 // Initialize Express app
 const app = express();
@@ -37,14 +40,19 @@ mongoose
     process.exit(1);
   });
 
+// Ensure each route is properly exported as a router before using it
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
-// app.use("/api/plans", plansRoutes);
+app.use("/api/plans", plansRoutes);
+app.use("/api/exercises", exercisesRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
-  res.status(200).json({ status: "ok", environment: process.env.NODE_ENV });
+  res.status(200).json({
+    status: "ok",
+    environment: process.env.NODE_ENV,
+  });
 });
 
 // Error handling middleware

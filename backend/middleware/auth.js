@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
  * Improved middleware to verify the Clerk JWT
  * This uses a safer JWT verification approach
  */
-const verifyClerkJWT = async (req, res, next) => {
+const verifyClerkJWT = (req, res, next) => {
   try {
     // Get auth header
     const authHeader = req.headers.authorization;
