@@ -1,68 +1,49 @@
-import { Routes, Route, BrowserRouter, Navigate } from "react-router-dom";
-import { SignedIn, SignedOut, useAuth } from "@clerk/clerk-react";
-import Home from "./pages/Home.tsx";
-import "./App.css";
-import Dashboard from "./pages/Dashboard.tsx";
-import Login from "./components/Auth/Login.tsx";
-import Signup from "./components/Auth/Signup.tsx";
-import Navbar from "./components/Navbar.tsx";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
+import Dashboard from "./components/Dashboard";
+import SignInPage from "./components/SignIn";
+import SignUpPage from "./components/SignUp";
+import Home from "./components/Home";
+import Navbar from "./components/Navbar";
 
-function App() {
-  const { isLoaded, isSignedIn } = useAuth();
+// Protected route component that redirects to signin if not authenticated
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isSignedIn, isLoaded } = useAuth();
 
-  // Show loading state while Clerk loads
   if (!isLoaded) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        Loading...
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
+  if (!isSignedIn) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+function App() {
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <Routes>
-            <Route path="/" element={<Home />} />
-
-            {/* Auth routes with proper redirects */}
-            <Route
-              path="/login"
-              element={
-                isSignedIn ? <Navigate to="/dashboard" replace /> : <Login />
-              }
-            />
-
-            <Route
-              path="/signup"
-              element={
-                isSignedIn ? <Navigate to="/dashboard" replace /> : <Signup />
-              }
-            />
-
-            {/* Protected dashboard route */}
-            <Route
-              path="/dashboard"
-              element={
-                <>
-                  <SignedIn>
-                    <Dashboard />
-                  </SignedIn>
-                  <SignedOut>
-                    <Navigate to="/login" replace />
-                  </SignedOut>
-                </>
-              }
-            />
-
-            {/* Catch-all route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </div>
-      </div>
-    </BrowserRouter>
+    <>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/signin" element={<SignInPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

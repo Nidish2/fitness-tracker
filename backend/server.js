@@ -1,56 +1,65 @@
-const express = require("express");
-const cors = require("cors");
-const connectDB = require("./config/db");
 require("dotenv").config();
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const authRoutes = require("./routes/auth");
+const usersRoutes = require("./routes/users");
+// const plansRoutes = require("./routes/plans");
 
+// Initialize Express app
 const app = express();
-
-// Connect to MongoDB
-connectDB();
+const PORT = process.env.PORT || 5000;
 
 // Middleware
+app.use(express.json());
+app.use(cookieParser(process.env.COOKIE_SECRET || "fitness-tracker-secret"));
+
+// Set up CORS properly to allow frontend requests
 app.use(
   cors({
-    origin: "http://localhost:5173", // Vite default port
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.FRONTEND_URL || "https://your-production-domain.com"
+        : "http://localhost:5173", // Vite's default port
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-app.use(express.json());
 
-// In your server.js or app.js
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "http://localhost:5173");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Credentials", "true");
+// Connect to MongoDB
+mongoose
+  .connect(process.env.MONGODB_URI)
+  .then(() => console.log("MongoDB connected successfully"))
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
+    process.exit(1);
+  });
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+// API Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", usersRoutes);
+// app.use("/api/plans", plansRoutes);
 
-  next();
-});
-
-// Routes
-app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/user", require("./routes/userRoutes")); // Add user routes
-
-// Basic route for testing
-app.get("/", (req, res) => {
-  res.json({ message: "Fitness Tracker Backend is running" });
-});
-
-// In your server.js
+// Health check endpoint
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", message: "Server is running" });
+  res.status(200).json({ status: "ok", environment: process.env.NODE_ENV });
 });
 
-const PORT = process.env.PORT || 5000;
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    success: false,
+    message: "Internal server error",
+    error:
+      process.env.NODE_ENV === "development" ? err.message : "Server error",
+  });
+});
+
+// Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV}`);
 });
