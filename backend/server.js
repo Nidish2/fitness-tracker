@@ -11,7 +11,7 @@ const usersRoutes = require("./routes/users");
 const plansRoutes = require("./routes/plans");
 const exercisesRoutes = require("./routes/exercises");
 // Add this with the other route imports in server.js
-const googleFitRoutes = require("./routes/googleFit");
+// const googleFitRoutes = require("./routes/googleFit");
 
 // Initialize Express app
 const app = express();
@@ -64,7 +64,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/plans", plansRoutes);
 app.use("/api/exercises", exercisesRoutes);
-app.use("/api/googlefit", googleFitRoutes);
+// app.use("/api/googlefit", googleFitRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
