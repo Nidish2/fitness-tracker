@@ -6,7 +6,6 @@ import SignUpPage from "./components/SignUp";
 import Home from "./components/Home";
 import Navbar from "./components/Navbar";
 
-// Protected route component that redirects to signin if not authenticated
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isSignedIn, isLoaded } = useAuth();
 
