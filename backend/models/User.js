@@ -45,6 +45,11 @@ const UserSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    googleFitTokens: {
+      access_token: String,
+      refresh_token: String,
+      expiry_date: Number,
+    },
   },
   { timestamps: true }
 );

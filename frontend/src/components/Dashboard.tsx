@@ -4,6 +4,14 @@ import { useNavigate } from "react-router-dom";
 import apiService from "../services/api";
 import ProfileForm from "./ProfileForm";
 import PlanSelector from "./PlanSelector";
+import FitnessDataDashboard from "./FitnessDataDashboard";
+import GoogleFitConnector from "./GoogleFitConnector";
+import {
+  calculateBMI,
+  getBMICategory,
+  calculateWeeklyAverage,
+  formatIntensity,
+} from "./fitnessUtils";
 
 interface UserData {
   id?: string;
@@ -50,9 +58,26 @@ const Dashboard = () => {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
   const [planLoading, setPlanLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("profile"); // Either "profile" or "plans"
+  const [error, setError] = useState(""); // Either "profile" or "plans"
+  const [activeTab, setActiveTab] = useState("profile"); // "profile", "plans", or "fitness"
+  const [isGoogleFitConnected, setIsGoogleFitConnected] = useState(false);
+  const [showFitnessData, setShowFitnessData] = useState(false);
+  const [fitnessSummary, setFitnessSummary] = useState<{
+    weeklySteps: number;
+    weeklyCalories: number;
+    goalProgress: number;
+  }>({
+    weeklySteps: 0,
+    weeklyCalories: 0,
+    goalProgress: 0,
+  });
 
+  const handleGoogleFitConnection = (isConnected: boolean) => {
+    setIsGoogleFitConnected(isConnected);
+    if (isConnected && !showFitnessData) {
+      setShowFitnessData(true);
+    }
+  };
   useEffect(() => {
     const ensureUserRegistered = async () => {
       if (!isLoaded || !user?.id) return;
@@ -246,10 +271,21 @@ const Dashboard = () => {
           )}
 
           {userData && activeTab === "plans" && (
-            <PlanSelector
-              userData={{ ...userData, id: userData.id || "" }}
-              onPlanSelect={handlePlanSelect}
-            />
+            <div>
+              <PlanSelector
+                userData={{ ...userData, id: userData.id || "" }}
+                onPlanSelect={handlePlanSelect}
+              />
+              {/* Add search button for workout plans */}
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => console.log("Search functionality triggered")}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  Search Plans
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Selected Plan Display Section - Only show if user has selected a plan */}
@@ -319,6 +355,12 @@ const Dashboard = () => {
                       }
                     >
                       View Plan Details
+                    </button>
+                    <button
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      onClick={() => console.log("Edit data functionality")}
+                    >
+                      Edit Data
                     </button>
                   </div>
                 </>

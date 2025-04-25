@@ -119,7 +119,7 @@ Below is a step-by-step guide to build your MERN stack fitness tracker project, 
 
 ---
 
-### Phase 4: Google Fit API Integration
+### Phase 4: Google Fit API and exerciseDB API (Continued) Integration
 
 **Tools**: Google Cloud Console, OAuth2, Node.js Google API client.
 
@@ -135,7 +135,8 @@ Below is a step-by-step guide to build your MERN stack fitness tracker project, 
 3. **Data Fetching**:
    - Use access tokens to fetch steps, calories, etc., from Google Fit API.
    - Save data in MongoDB under the user’s document.
-
+4. **Workout Plans**:
+   - Continued from phase 3 `routes/exercises.js`, fetch exercises from ExerciseDB API.
 ---
 
 ### Phase 5: Data Visualization
@@ -219,5 +220,6 @@ Below is an assumed directory structure with file purposes, wrapped in an artifa
 
 
 ---
+client id-215610659546-uihgqi6it9b7310f31c3pv425vkoerel.apps.googleusercontent.com
 
 This phased approach ensures a functional fitness tracker with minimal manual work, leveraging free APIs for efficiency and accuracy. Start with authentication and core features, then integrate APIs and visualization incrementally.
