@@ -42,7 +42,7 @@ interface Plan {
   targetAgeMax?: number;
   targetGender?: string;
   daysPerWeek: number;
-  exercises: Exercise[];
+  exercises: Exercise[] | number;
 }
 
 interface Exercise {
@@ -64,14 +64,16 @@ interface ApiUserResponse {
 
 interface ApiPlanResponse {
   success: boolean;
+  message?: string;
   plan: Plan;
 }
 
-interface ApiExercisesResponse {
-  success: boolean;
-  exercises: Exercise[];
+interface ExerciseFilters {
+  type?: string;
+  muscle?: string;
+  difficulty?: string;
 }
-
+// Update this interface to match the actual respons
 // Create axios instance with default configs
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -101,27 +103,20 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Extract the most useful error message
     let errorMessage = "An unknown error occurred";
-
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
       errorMessage =
         error.response.data?.message ||
         `Server error: ${error.response.status}`;
       console.error("Server Error:", error.response.data);
     } else if (error.request) {
-      // The request was made but no response was received
       errorMessage =
         "No response received from server. Please check your network connection.";
       console.error("Network Error:", error.request);
     } else {
-      // Something happened in setting up the request that triggered an Error
       errorMessage = error.message || "Error setting up request";
       console.error("Request Error:", error.message);
     }
-
     return Promise.reject(new Error(errorMessage));
   }
 );
@@ -129,12 +124,10 @@ apiClient.interceptors.response.use(
 // Improved token retrieval function
 async function getToken(): Promise<string> {
   try {
-    // Wait for Clerk to initialize if needed
     if (!window.Clerk?.session) {
       console.log("Waiting for Clerk session to initialize...");
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
-
     const token = await window.Clerk?.session?.getToken();
     return token || "";
   } catch (error) {
@@ -168,7 +161,7 @@ const apiService = {
     }
   },
 
-  // Update user profile - Fixed to use apiClient instead of fetch
+  // Update user profile
   updateUserProfile: async (
     clerkId: string,
     profileData: Partial<User>
@@ -185,11 +178,16 @@ const apiService = {
     }
   },
 
-  // Get all workout plans - Fixed to use apiClient instead of fetch
+  // Get all workout plans - Fixed to handle the actual API response format
   getWorkoutPlans: async (): Promise<Plan[]> => {
     try {
-      const response = await apiClient.get("/plans");
-      return response.data; // This should include the 'plans' array
+      const response = await apiClient.get<Plan[]>("/plans");
+
+      // Log the raw response for debugging
+      console.log("Raw API response:", response.data);
+
+      // The API directly returns an array of plans, not wrapped in a success object
+      return response.data;
     } catch (error) {
       console.error("Error fetching workout plans:", error);
       throw error;
@@ -234,18 +232,80 @@ const apiService = {
     }
   },
 
-  // Get exercises from ExerciseDB API
-  getExercises: async (
-    filters: { type?: string; muscle?: string; difficulty?: string } = {}
-  ): Promise<Exercise[]> => {
+  // Get exercises with optional filters
+  getExercises: async (filters: ExerciseFilters = {}) => {
     try {
-      const response = await apiClient.get<ApiExercisesResponse>("/exercises", {
-        params: filters,
-      });
-      return response.data.exercises;
+      // Create query string from filters
+      const queryParams = new URLSearchParams();
+
+      if (filters.type) queryParams.append("type", filters.type);
+      if (filters.muscle) queryParams.append("muscle", filters.muscle);
+      if (filters.difficulty)
+        queryParams.append("difficulty", filters.difficulty);
+
+      const queryString = queryParams.toString();
+      const endpoint = `/exercises${queryString ? `?${queryString}` : ""}`;
+
+      console.log("Request URL:", `${API_BASE_URL}${endpoint}`);
+
+      const response = await apiClient.get(endpoint);
+
+      // Handle different response formats
+      if (response.data.exercises) {
+        return response.data.exercises;
+      }
+      return response.data;
     } catch (error) {
-      console.error("Failed to fetch exercises:", error);
+      console.error("Error fetching exercises:", error);
+      // Return empty array on error instead of throwing
+      return [];
+    }
+  },
+
+  getExerciseById: async (id: string) => {
+    try {
+      const response = await apiClient.get(`/exercises/${id}`);
+
+      // Handle different response formats
+      if (response.data.exercise) {
+        return response.data.exercise;
+      }
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching exercise with ID ${id}:`, error);
       throw error;
+    }
+  },
+
+  getBodyParts: async () => {
+    try {
+      const response = await apiClient.get("/exercises/categories/bodyparts");
+
+      // Handle different response formats
+      if (response.data.bodyParts) {
+        return response.data.bodyParts;
+      }
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching body parts:", error);
+      // Return empty array on error
+      return [];
+    }
+  },
+
+  getExerciseTypes: async () => {
+    try {
+      const response = await apiClient.get("/exercises/categories/types");
+
+      // Handle different response formats
+      if (response.data.types) {
+        return response.data.types;
+      }
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching exercise types:", error);
+      // Return empty array on error
+      return [];
     }
   },
 };

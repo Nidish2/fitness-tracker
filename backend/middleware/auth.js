@@ -1,6 +1,15 @@
 const jwt = require("jsonwebtoken");
 
 /**
+ * Middleware to authenticate requests
+ */
+const authenticate = (req, res, next) => {
+  // Add your authentication logic here, e.g., checking a token
+  console.log("Authenticating...");
+  next(); // Proceed to the next middleware/controller
+};
+
+/**
  * Improved middleware to verify the Clerk JWT
  * This uses a safer JWT verification approach
  */
@@ -66,4 +75,5 @@ const verifyClerkJWT = (req, res, next) => {
 
 module.exports = {
   verifyClerkJWT,
+  authenticate,
 };

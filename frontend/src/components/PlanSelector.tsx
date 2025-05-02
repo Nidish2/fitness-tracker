@@ -54,37 +54,35 @@ const PlanSelector = ({ userData, onPlanSelect }: PlanSelectorProps) => {
   const [selectedPlanId, setSelectedPlanId] = useState<string>(
     userData.selectedPlanId || ""
   );
+  const [debugInfo, setDebugInfo] = useState<string>("");
 
   // Fetch all plans on component mount
   useEffect(() => {
     const fetchPlans = async () => {
       try {
         setLoading(true);
-        console.log("Fetching workout plans...");
-        type WorkoutPlansResponse = Plan[] | { plans: Plan[] };
-        const response =
-          (await apiService.getWorkoutPlans()) as WorkoutPlansResponse;
-        console.log("Fetched plans:", response);
+        setError(""); // Clear any previous errors
 
-        // Handle different response formats
-        let fetchedPlans: Plan[];
-        if (Array.isArray(response)) {
-          fetchedPlans = response;
-        } else if (response.plans && Array.isArray(response.plans)) {
-          fetchedPlans = response.plans;
+        console.log("Fetching workout plans...");
+        const fetchedPlans = await apiService.getWorkoutPlans();
+        console.log("Fetched plans:", fetchedPlans);
+
+        if (Array.isArray(fetchedPlans) && fetchedPlans.length > 0) {
+          setPlans(fetchedPlans);
+          setFilteredPlans(fetchedPlans);
+          setDebugInfo(`Successfully fetched ${fetchedPlans.length} plans`);
         } else {
-          fetchedPlans = [];
-          console.error("Unexpected response format:", response);
+          setDebugInfo("Received empty or invalid plans data");
+          setError("No workout plans available");
         }
 
-        setPlans(fetchedPlans);
-        setFilteredPlans(fetchedPlans);
         setLoading(false);
       } catch (err) {
         console.error("Error fetching plans:", err);
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch workout plans"
-        );
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to fetch workout plans";
+        setError(errorMessage);
+        setDebugInfo(`Error: ${errorMessage}`);
         setLoading(false);
       }
     };
@@ -98,6 +96,9 @@ const PlanSelector = ({ userData, onPlanSelect }: PlanSelectorProps) => {
 
     let filtered = [...plans];
 
+    // Log filtering process for debugging
+    console.log("Filtering plans. Starting with:", plans.length);
+
     // Filter by user age if available
     if (userData.age !== undefined) {
       const userAge = userData.age;
@@ -107,6 +108,7 @@ const PlanSelector = ({ userData, onPlanSelect }: PlanSelectorProps) => {
           !plan.targetAgeMax ||
           (userAge >= plan.targetAgeMin && userAge <= plan.targetAgeMax)
       );
+      console.log("After age filter:", filtered.length);
     }
 
     // Filter by user gender if available
@@ -117,6 +119,7 @@ const PlanSelector = ({ userData, onPlanSelect }: PlanSelectorProps) => {
           plan.targetGender === "all" ||
           plan.targetGender === userData.gender
       );
+      console.log("After gender filter:", filtered.length);
     }
 
     // Filter by selected intensity
@@ -124,11 +127,13 @@ const PlanSelector = ({ userData, onPlanSelect }: PlanSelectorProps) => {
       filtered = filtered.filter(
         (plan) => plan.intensity === selectedIntensity
       );
+      console.log("After intensity filter:", filtered.length);
     }
 
     // Filter by selected duration
     if (selectedDuration) {
       filtered = filtered.filter((plan) => plan.duration === selectedDuration);
+      console.log("After duration filter:", filtered.length);
     }
 
     // Filter by search term
@@ -139,6 +144,7 @@ const PlanSelector = ({ userData, onPlanSelect }: PlanSelectorProps) => {
           plan.name.toLowerCase().includes(term) ||
           (plan.description && plan.description.toLowerCase().includes(term))
       );
+      console.log("After search term filter:", filtered.length);
     }
 
     setFilteredPlans(filtered);
@@ -148,14 +154,19 @@ const PlanSelector = ({ userData, onPlanSelect }: PlanSelectorProps) => {
   const handlePlanSelect = async (planId: string) => {
     try {
       setSelectedPlanId(planId);
+      console.log(`Selected plan ID: ${planId}`);
 
       // Call the API to save the selected plan
       await apiService.selectWorkoutPlan(userData.clerkId, planId);
+      console.log("Plan selection saved successfully");
 
       // Notify parent component with the updated data
       onPlanSelect(planId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to select plan");
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to select plan";
+      console.error("Error selecting plan:", errorMessage);
+      setError(errorMessage);
     }
   };
 
@@ -263,6 +274,7 @@ const PlanSelector = ({ userData, onPlanSelect }: PlanSelectorProps) => {
       {/* Debug info */}
       <div className="mb-4 p-2 bg-gray-50 text-xs text-gray-500 rounded">
         Available Plans: {plans.length} | Filtered Plans: {filteredPlans.length}
+        {debugInfo && <div className="mt-1">{debugInfo}</div>}
       </div>
 
       {/* Plan cards */}

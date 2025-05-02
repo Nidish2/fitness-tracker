@@ -4,14 +4,7 @@ import { useNavigate } from "react-router-dom";
 import apiService from "../services/api";
 import ProfileForm from "./ProfileForm";
 import PlanSelector from "./PlanSelector";
-import FitnessDataDashboard from "./FitnessDataDashboard";
-import GoogleFitConnector from "./GoogleFitConnector";
-import {
-  calculateBMI,
-  getBMICategory,
-  calculateWeeklyAverage,
-  formatIntensity,
-} from "./fitnessUtils";
+import ExerciseBrowser from "./ExerciseBrowser"; // Import the ExerciseBrowser component
 
 interface UserData {
   id?: string;
@@ -58,26 +51,9 @@ const Dashboard = () => {
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
   const [planLoading, setPlanLoading] = useState(false);
-  const [error, setError] = useState(""); // Either "profile" or "plans"
-  const [activeTab, setActiveTab] = useState("profile"); // "profile", "plans", or "fitness"
-  const [isGoogleFitConnected, setIsGoogleFitConnected] = useState(false);
-  const [showFitnessData, setShowFitnessData] = useState(false);
-  const [fitnessSummary, setFitnessSummary] = useState<{
-    weeklySteps: number;
-    weeklyCalories: number;
-    goalProgress: number;
-  }>({
-    weeklySteps: 0,
-    weeklyCalories: 0,
-    goalProgress: 0,
-  });
+  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("profile"); // Now has: "profile", "plans", or "exercises"
 
-  const handleGoogleFitConnection = (isConnected: boolean) => {
-    setIsGoogleFitConnected(isConnected);
-    if (isConnected && !showFitnessData) {
-      setShowFitnessData(true);
-    }
-  };
   useEffect(() => {
     const ensureUserRegistered = async () => {
       if (!isLoaded || !user?.id) return;
@@ -254,6 +230,23 @@ const Dashboard = () => {
               >
                 Workout Plans
               </button>
+              <button
+                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
+                  activeTab === "exercises"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                } ${
+                  !userData?.isProfileComplete
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
+                onClick={() =>
+                  userData?.isProfileComplete && setActiveTab("exercises")
+                }
+                disabled={!userData?.isProfileComplete}
+              >
+                Exercises
+              </button>
             </div>
           </div>
 
@@ -276,7 +269,6 @@ const Dashboard = () => {
                 userData={{ ...userData, id: userData.id || "" }}
                 onPlanSelect={handlePlanSelect}
               />
-              {/* Add search button for workout plans */}
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={() => console.log("Search functionality triggered")}
@@ -288,85 +280,99 @@ const Dashboard = () => {
             </div>
           )}
 
+          {userData && activeTab === "exercises" && <ExerciseBrowser />}
+
           {/* Selected Plan Display Section - Only show if user has selected a plan */}
-          {userData?.selectedPlanId && selectedPlan && (
-            <div className="mt-6 bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Your Selected Workout Plan
-              </h3>
+          {userData?.selectedPlanId &&
+            selectedPlan &&
+            activeTab === "plans" && (
+              <div className="mt-6 bg-white shadow rounded-lg p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Your Selected Workout Plan
+                </h3>
 
-              {planLoading ? (
-                <div className="flex justify-center py-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                </div>
-              ) : (
-                <>
-                  <div className="bg-green-50 p-4 rounded-md mb-4">
-                    <p className="text-green-600">
-                      You have selected the <strong>{selectedPlan.name}</strong>{" "}
-                      plan!
-                    </p>
+                {planLoading ? (
+                  <div className="flex justify-center py-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
                   </div>
+                ) : (
+                  <>
+                    <div className="bg-green-50 p-4 rounded-md mb-4">
+                      <p className="text-green-600">
+                        You have selected the{" "}
+                        <strong>{selectedPlan.name}</strong> plan!
+                      </p>
+                    </div>
 
-                  <div className="mb-4">
-                    <h4 className="font-medium text-gray-700 mb-2">
-                      Plan Details:
-                    </h4>
-                    <p className="text-gray-600 mb-2">
-                      {selectedPlan.description}
-                    </p>
-                    <div className="grid grid-cols-2 gap-4 mt-3">
-                      <div className="bg-gray-50 p-3 rounded">
-                        <span className="text-sm text-gray-500">
-                          Intensity:
-                        </span>
-                        <p className="font-medium">{selectedPlan.intensity}</p>
-                      </div>
-                      <div className="bg-gray-50 p-3 rounded">
-                        <span className="text-sm text-gray-500">Duration:</span>
-                        <p className="font-medium">{selectedPlan.duration}</p>
-                      </div>
-                      <div className="bg-gray-50 p-3 rounded">
-                        <span className="text-sm text-gray-500">
-                          Days per week:
-                        </span>
-                        <p className="font-medium">
-                          {selectedPlan.daysPerWeek}
-                        </p>
-                      </div>
-                      <div className="bg-gray-50 p-3 rounded">
-                        <span className="text-sm text-gray-500">
-                          Exercises:
-                        </span>
-                        <p className="font-medium">
-                          {selectedPlan.exercises.length}
-                        </p>
+                    <div className="mb-4">
+                      <h4 className="font-medium text-gray-700 mb-2">
+                        Plan Details:
+                      </h4>
+                      <p className="text-gray-600 mb-2">
+                        {selectedPlan.description}
+                      </p>
+                      <div className="grid grid-cols-2 gap-4 mt-3">
+                        <div className="bg-gray-50 p-3 rounded">
+                          <span className="text-sm text-gray-500">
+                            Intensity:
+                          </span>
+                          <p className="font-medium">
+                            {selectedPlan.intensity}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded">
+                          <span className="text-sm text-gray-500">
+                            Duration:
+                          </span>
+                          <p className="font-medium">{selectedPlan.duration}</p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded">
+                          <span className="text-sm text-gray-500">
+                            Days per week:
+                          </span>
+                          <p className="font-medium">
+                            {selectedPlan.daysPerWeek}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded">
+                          <span className="text-sm text-gray-500">
+                            Exercises:
+                          </span>
+                          <p className="font-medium">
+                            {selectedPlan.exercises.length}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="mt-4">
-                    <button
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      onClick={() =>
-                        console.log(
-                          "View plan details functionality - to be implemented in Phase 4"
-                        )
-                      }
-                    >
-                      View Plan Details
-                    </button>
-                    <button
-                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
-                      onClick={() => console.log("Edit data functionality")}
-                    >
-                      Edit Data
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+                    <div className="mt-4">
+                      <button
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 mr-2"
+                        onClick={() =>
+                          console.log(
+                            "View plan details functionality - to be implemented in Phase 4"
+                          )
+                        }
+                      >
+                        View Plan Details
+                      </button>
+                      <button
+                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 mr-2"
+                        onClick={() => console.log("Edit data functionality")}
+                      >
+                        Edit Data
+                      </button>
+                      <button
+                        className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        onClick={() => setActiveTab("exercises")}
+                      >
+                        Browse Exercises
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
         </div>
       </main>
     </div>

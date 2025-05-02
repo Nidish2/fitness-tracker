@@ -1,15 +1,21 @@
-// routes/seedPlans.js
+// seedPlans.js
 require("dotenv").config();
 const mongoose = require("mongoose");
 const Plan = require("../models/Plan");
 
-// Database connection
+// Database connection with improved error logging
+console.log("Attempting to connect to MongoDB...");
+console.log("MongoDB URI exists:", !!process.env.MONGODB_URI);
+
 mongoose
   .connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-  .then(() => console.log("MongoDB connected successfully"))
+  .then(() => {
+    console.log("MongoDB connected successfully");
+    seedDatabase();
+  })
   .catch((err) => {
     console.error("MongoDB connection error:", err);
     process.exit(1);
@@ -21,7 +27,7 @@ const workoutPlans = [
     name: "Beginner 10-Day Starter",
     description: "A gentle introduction to fitness for absolute beginners",
     intensity: "low",
-    duration: "10 days",
+    duration: "10 days", // Note: case sensitivity matters for filtering
     targetAgeMin: 16,
     targetAgeMax: 70,
     targetGender: "all",
@@ -215,24 +221,35 @@ const workoutPlans = [
   },
 ];
 
-// Seed function
-const seedPlans = async () => {
+// Seed function - moved to be called only after successful connection
+const seedDatabase = async () => {
   try {
-    // Clear existing plans
-    await Plan.deleteMany({});
-    console.log("Deleted existing plans");
+    // Verify database connection
+    console.log("Database connection state:", mongoose.connection.readyState);
+    // 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
 
-    // Insert new plans
-    const createdPlans = await Plan.insertMany(workoutPlans);
-    console.log(`${createdPlans.length} workout plans seeded successfully`);
+    // Check if plans already exist
+    const existingPlansCount = await Plan.countDocuments();
+    console.log(`Found ${existingPlansCount} existing plans in the database`);
+
+    // Only clear and reseed if needed
+    if (existingPlansCount === 0) {
+      console.log("No existing plans found, seeding database...");
+
+      // Insert new plans
+      const createdPlans = await Plan.insertMany(workoutPlans);
+      console.log(`${createdPlans.length} workout plans seeded successfully`);
+    } else {
+      console.log("Plans already exist in database, no need to seed");
+    }
 
     // Close connection after seeding
     mongoose.connection.close();
+    console.log("MongoDB connection closed");
   } catch (error) {
-    console.error("Error seeding plans:", error);
+    console.error("Error during database operations:", error);
     mongoose.connection.close();
   }
 };
 
-// Run the seed function
-seedPlans();
+// Note: We don't call seedDatabase() here, it's called after successful connection
