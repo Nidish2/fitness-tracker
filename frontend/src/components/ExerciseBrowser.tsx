@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import apiService from "../services/api";
 
 interface Exercise {
@@ -38,7 +38,7 @@ const ExerciseBrowser = () => {
   });
 
   // Fetch exercises based on filters
-  const fetchExercises = async () => {
+  const fetchExercises = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -67,7 +67,7 @@ const ExerciseBrowser = () => {
       setError("Failed to load exercises. Please try again later.");
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   // Fetch categories for filter dropdowns
   const fetchCategories = async () => {
@@ -163,7 +163,7 @@ const ExerciseBrowser = () => {
     console.log("ExerciseBrowser component mounted");
     fetchExercises();
     fetchCategories();
-  }, []); // Empty dependency array since functions are stable
+  }, [fetchExercises]); // Include fetchExercises as a dependency
 
   // Back to exercise list
   const handleBackToList = () => {
