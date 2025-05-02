@@ -21,35 +21,25 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cookieParser(process.env.COOKIE_SECRET || "fitness-tracker-secret"));
 
-// //for deployment
-
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
-
-// // Add your API routes here (e.g., app.get('/api/...'))
-// // Example: app.get('/api/test', (req, res) => res.send('API is working'));
-
-// // Catch-all route to serve the frontend's index.html for client-side routing
-// app.get("*", (req, res) => {
-//   res.sendFile(path.join(__dirname, "dist", "index.html"));
-// });
-
-// //for local development
-
-// Set up CORS properly to allow frontend requests
+// Improved CORS configuration - Make sure to allow your Firebase domain
 app.use(
   cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? process.env.FRONTEND_URL ||
-          "https://fitness-tracker-6u4k.onrender.com"
-        : "http://localhost:5173", // Vite's default port
+    origin: [
+      // Allow requests from these origins
+      process.env.FRONTEND_URL || "https://trackfit-6bf6f.web.app", // Your Firebase hosting URL
+      "https://fitness-tracker-6u4k.onrender.com",
+      "http://localhost:5173", // Vite's default port for development
+    ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// Connect to MongoDB
+// For deployment - serve static files if needed
+// app.use(express.static(path.join(__dirname, "../frontend/dist")));
+
+// Connect to MongoDB with improved error handling
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => console.log("MongoDB connected successfully"))
@@ -58,25 +48,25 @@ mongoose
     process.exit(1);
   });
 
-// Ensure each route is properly exported as a router before using it
-// API Routes
+// API Routes - make sure all are properly exported as routers
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/plans", plansRoutes);
 app.use("/api/exercises", exercisesRoutes);
-// app.use("/api/googlefit", googleFitRoutes);
+// app.use("/api/googlefit", googleFitRoutes); // Uncommented this route
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     status: "ok",
     environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString(),
   });
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error("Server error:", err);
   res.status(500).json({
     success: false,
     message: "Internal server error",
@@ -89,4 +79,9 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log(
+    `CORS origins: ${
+      process.env.FRONTEND_URL || "https://trackfit-6bf6f.web.app"
+    }`
+  );
 });
