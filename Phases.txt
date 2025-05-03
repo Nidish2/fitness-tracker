@@ -220,6 +220,23 @@ Below is an assumed directory structure with file purposes, wrapped in an artifa
 
 
 ---
-client id-215610659546-uihgqi6it9b7310f31c3pv425vkoerel.apps.googleusercontent.com
+***************************************************Deployment Succesfull******************************************
 
+Backend - using Render - https://fitness-tracker-6u4k.onrender.com
+
+Frontend - using Firebase - https://trackfit-6bf6f.web.app
+
+***************************************************Deployment Succesfull******************************************
+
+***************************************************For local******************************************************
+
+New Terminal
+cd backend
+npm Start
+
+New Terminal
+cd frontend
+npm run dev
+
+***************************************************For local******************************************************
 This phased approach ensures a functional fitness tracker with minimal manual work, leveraging free APIs for efficiency and accuracy. Start with authentication and core features, then integrate APIs and visualization incrementally.
